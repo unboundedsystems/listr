@@ -1,5 +1,6 @@
 'use strict';
-const pMap = require('p-map');
+const PQueue = require('p-queue');
+const pDefer = require('p-defer');
 const Subject = require('rxjs').Subject;
 const Task = require('./lib/task');
 const TaskWrapper = require('./lib/task-wrapper');
@@ -45,6 +46,8 @@ class Listr extends Subject {
 			this.concurrency = this._options.concurrent;
 		}
 
+		this._queue = new PQueue({concurrency: this.concurrency});
+
 		this._RendererClass = renderer.getRenderer(this._options.renderer, this._options.nonTTYRenderer);
 
 		this.exitOnError = this._options.exitOnError;
@@ -67,10 +70,6 @@ class Listr extends Subject {
 	}
 
 	add(task) {
-		if (this.running && this.concurrency !== 1) {
-			throw new ListrError('Cannot add tasks while running if concurrency != 1');
-		}
-
 		const tasks = Array.isArray(task) ? task : [task];
 
 		for (const task of tasks) {
@@ -81,10 +80,26 @@ class Listr extends Subject {
 					type: 'ADDTASK',
 					data: t
 				});
+				this.queueTask(t);
 			}
 		}
 
 		return this;
+	}
+
+	queueTask(task) {
+		this._queue.add(() => {
+			if (this._errorThrown) {
+				return;
+			}
+
+			this._checkAll(this._context);
+			return runTask(task, this._context, this._errors)
+				.catch(error => {
+					this._errorThrown = true;
+					throw error;
+				});
+		}).catch(this._done.reject);
 	}
 
 	render() {
@@ -102,22 +117,33 @@ class Listr extends Subject {
 	run(context) {
 		this.render();
 
-		context = context || Object.create(null);
+		this._context = context || Object.create(null);
 
-		const errors = [];
+		this._errors = [];
 
-		this._checkAll(context);
+		this._checkAll(this._context);
 
-		const tasks = pMap(this._tasks, task => {
-			this._checkAll(context);
-			return runTask(task, context, errors);
-		}, {concurrency: this.concurrency});
+		// This is the promise that will settle when run() is complete.
+		// It settles on one of two conditions:
+		//   1. It resolves successfully when the task queue is idle (queue is
+		//      empty and all promises have been resolved successfully)
+		//   2. It rejects immediately if any task throws an error.
+		this._done = pDefer();
 
-		return tasks
+		// Add all the tasks we have so far to the queue
+		this._tasks.map(task => this.queueTask(task));
+
+		this._queue.onIdle()
+			.then(this._done.resolve) // Successful completion of all tasks
+			.catch(this._done.reject);
+
+		return this._done.promise
 			.then(() => {
-				if (errors.length > 0) {
+				// Check for errors from tasks with exitOnError===false
+				if (this._errors.length > 0) {
 					const err = new ListrError('Something went wrong');
-					err.errors = errors;
+					err.errors = this._errors;
+
 					throw err;
 				}
 
@@ -126,10 +152,10 @@ class Listr extends Subject {
 
 				this._renderer.end();
 
-				return context;
+				return this._context;
 			})
 			.catch(error => {
-				error.context = context;
+				error.context = this._context;
 				this.complete();
 				this._renderer.end(error);
 				throw error;
