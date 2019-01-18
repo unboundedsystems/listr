@@ -199,3 +199,32 @@ test('context is attached to error object', async t => {
 		});
 	}
 });
+
+test('add task during run', async t => {
+	const list = new Listr([
+		{
+			title: 'one',
+			task: context => {
+				list.add({
+					title: 'three',
+					task: context => {
+						context.state += '3';
+					}
+				});
+				context.state += '1';
+			}
+		},
+		{
+			title: 'two',
+			task: context => {
+				context.state += '2';
+			}
+		}
+	]);
+
+	const result = await list.run({state: '0'});
+
+	t.deepEqual(result, {
+		state: '0123'
+	});
+});

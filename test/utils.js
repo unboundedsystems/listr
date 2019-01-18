@@ -14,7 +14,7 @@ test('isListr', t => {
 test('isObservable', t => {
 	t.false(isObservable(null));
 	t.false(isObservable({}));
-	t.false(isObservable(new Listr([])));
+	t.true(isObservable(new Listr([])));
 	t.false(isObservable(new Promise(() => {})));
 	t.true(isObservable(new RxObservable(() => {})));
 	t.true(isObservable(new ZenObservable(() => {})));
