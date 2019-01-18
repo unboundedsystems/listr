@@ -298,12 +298,12 @@ tasks.run();
 
 ## Custom renderers
 
-It's possible to write custom renderers for Listr. A renderer is an ES6 class that accepts the tasks that it should render, and the Listr options object. It has two methods, the `render` method which is called when it should start rendering, and the `end` method. The `end` method is called when all the tasks are completed or if a task failed. If a task failed, the error object is passed in via an argument.
+It's possible to write custom renderers for Listr. A renderer is an ES6 class that accepts an array of tasks that it should render, the Listr options object, and the root Listr instance. It has two methods, the `render` method which is called when it should start rendering, and the `end` method. The `end` method is called when all the tasks are completed or if a task failed. If a task failed, the error object is passed in via an argument.
 
 ```js
 class CustomRenderer {
 
-	constructor(tasks, options) { }
+	constructor(tasks, options, listr) { }
 
 	static get nonTTY() {
 		return false;
@@ -331,14 +331,21 @@ Every task is an observable. The task emits three different events and every eve
 4. The task's title changed (`TITLE`).
 5. The task became enabled or disabled (`ENABLED`).
 
+Each Listr instance is also an observable. A Listr instance emits one event, which also has a `type` property.
+
+1. A new task has been appended to the task array associated with this Listr (`ADDTASK`). This event is only emitted for new tasks that are added *after* `render` has already been called and tasks are already executing.
+
 This allows you to flexibly build your UI. Let's render every task that starts executing.
 
 ```js
 class CustomRenderer {
 
-	constructor(tasks, options) {
+	constructor(tasks, options, listr) {
 		this._tasks = tasks;
 		this._options = Object.assign({}, options);
+		listr.subscribe(event => {
+			if (event.type === 'ADDTASK') this.subscribe(event.data);
+		});
 	}
 
 	static get nonTTY() {
@@ -347,12 +354,16 @@ class CustomRenderer {
 
 	render() {
 		for (const task of this._tasks) {
-			task.subscribe(event => {
-				if (event.type === 'STATE' && task.isPending()) {
-					console.log(`${task.title} [started]`);
-				}
-			});
+			this.subscribe(task);
 		}
+	}
+
+	subscribe(task) {
+		task.subscribe(event => {
+			if (event.type === 'STATE' && task.isPending()) {
+				console.log(`${task.title} [started]`);
+			}
+		});
 	}
 
 	end(err) { }

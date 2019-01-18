@@ -33,9 +33,22 @@ const render = tasks => {
 	}
 };
 
+const subscribeToListr = listr => {
+	listr.subscribe(
+		event => {
+			if (event.type === 'ADDTASK') {
+				const task = event.data;
+				console.log(`${task.title} [task added]`);
+				render([task]);
+			}
+		}
+	);
+};
+
 class SimpleRenderer {
-	constructor(tasks) {
+	constructor(tasks, options, listr) {
 		this._tasks = tasks;
+		subscribeToListr(listr);
 	}
 
 	static get nonTTY() {

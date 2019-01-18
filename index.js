@@ -1,5 +1,6 @@
 'use strict';
 const pMap = require('p-map');
+const Subject = require('rxjs').Subject;
 const Task = require('./lib/task');
 const TaskWrapper = require('./lib/task-wrapper');
 const renderer = require('./lib/renderer');
@@ -13,8 +14,9 @@ const runTask = (task, context, errors) => {
 	return new TaskWrapper(task, errors).run(context);
 };
 
-class Listr {
+class Listr extends Subject {
 	constructor(tasks, opts) {
+		super();
 		if (tasks && !Array.isArray(tasks) && typeof tasks === 'object') {
 			if (typeof tasks.title === 'string' && typeof tasks.task === 'function') {
 				throw new TypeError('Expected an array of tasks or an options object, got a task object');
@@ -65,10 +67,21 @@ class Listr {
 	}
 
 	add(task) {
+		if (this.running && this.concurrency !== 1) {
+			throw new ListrError('Cannot add tasks while running if concurrency != 1');
+		}
+
 		const tasks = Array.isArray(task) ? task : [task];
 
 		for (const task of tasks) {
-			this._tasks.push(new Task(this, task, this._options));
+			const t = new Task(this, task, this._options);
+			this._tasks.push(t);
+			if (this.running) {
+				this.next({
+					type: 'ADDTASK',
+					data: t
+				});
+			}
 		}
 
 		return this;
@@ -76,10 +89,14 @@ class Listr {
 
 	render() {
 		if (!this._renderer) {
-			this._renderer = new this._RendererClass(this._tasks, this._options);
+			this._renderer = new this._RendererClass(this._tasks, this._options, this);
 		}
 
 		return this._renderer.render();
+	}
+
+	get running() {
+		return this._renderer !== undefined;
 	}
 
 	run(context) {
@@ -104,12 +121,16 @@ class Listr {
 					throw err;
 				}
 
+				// Mark the Observable as completed
+				this.complete();
+
 				this._renderer.end();
 
 				return context;
 			})
 			.catch(error => {
 				error.context = context;
+				this.complete();
 				this._renderer.end(error);
 				throw error;
 			});
