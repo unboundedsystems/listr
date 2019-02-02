@@ -1,3 +1,4 @@
+// Originally based on:
 // Type definitions for listr 0.13
 // Project: https://github.com/samverschueren/listr#readme
 // Definitions by: Dusan Radovanovic <https://github.com/durad>
@@ -27,6 +28,7 @@ declare namespace Listr {
 		task: (ctx: any, task: ListrTaskWrapper) => void | string | Promise<any> | stream.Readable | Listr;
 		skip?: (ctx: any, task: ListrTaskWrapper) => boolean | Promise<boolean> | string | void;
 		enabled?: (ctx: any, task: ListrTaskWrapper) => boolean | Promise<boolean>;
+		onComplete?: (ctx: any, task: ListrTaskWrapper, err?: any) => void | Promise<void>;
 	}
 
 	interface ListrTaskWrapper {
