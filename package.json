@@ -18,7 +18,8 @@
 	},
 	"files": [
 		"index.js",
-		"lib"
+		"lib",
+		"index.d.ts"
 	],
 	"keywords": [
 		"cli",
@@ -67,6 +68,7 @@
 		"*.js": "xo"
 	},
 	"pre-commit": "lint:staged",
+	"types": "index.d.ts",
 	"xo": {
 		"rules": {
 			"prefer-destructuring": "off"
