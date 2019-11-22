@@ -1,9 +1,9 @@
 {
-	"name": "listr",
-	"version": "0.14.3-unb3",
+	"name": "@unboundedsystems/listr",
+	"version": "0.14.3-unb5",
 	"description": "Terminal task list",
 	"license": "MIT",
-	"repository": "SamVerschueren/listr",
+	"repository": "unboundedsystems/listr",
 	"author": {
 		"name": "Sam Verschueren",
 		"email": "sam.verschueren@gmail.com",
@@ -40,12 +40,12 @@
 	],
 	"dependencies": {
 		"@samverschueren/stream-to-observable": "^0.3.0",
+		"@unboundedsystems/listr-update-renderer": "0.5.0-unb5",
+		"@unboundedsystems/listr-verbose-renderer": "0.5.0-unb5",
 		"is-observable": "^1.1.0",
 		"is-promise": "^2.1.0",
 		"is-stream": "^1.1.0",
 		"listr-silent-renderer": "^1.1.1",
-		"listr-update-renderer": "unboundedsystems/listr-update-renderer#v0.5.0-unb2",
-		"listr-verbose-renderer": "unboundedsystems/listr-verbose-renderer#v0.5.0-unb1",
 		"p-defer": "^1.0.0",
 		"p-queue": "^3.0.0",
 		"rxjs": "^6.3.3"
